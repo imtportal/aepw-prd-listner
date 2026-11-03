@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'func-aepw-prd-listner'
+  AZURE_FUNCTIONAPP_NAME: 'aepw-listner'
   DOTNET_VERSION: '10.0.x'
 
 jobs:
