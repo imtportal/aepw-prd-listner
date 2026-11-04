@@ -1,94 +1,43 @@
-name: Build and Deploy Azure Function
+# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
+# More GitHub Actions for Azure: https://github.com/Azure/actions
+
+name: Build and deploy dotnet core project to Azure Function App - aepw-listner
 
 on:
   push:
     branches:
-      - main
-
+      - 'main'
   workflow_dispatch:
 
 env:
-  AZURE_FUNCTIONAPP_NAME: 'aepw-listner'
-  DOTNET_VERSION: '10.0.x'
-  PROJECT_FILE: 'Aepw.Evidence.Listener.csproj'
-  PUBLISH_DIR: './publish'
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
+  DOTNET_VERSION: '10.0.x' # set this to the dotnet version to use
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout code
+      - name: 'Checkout GitHub Action'
         uses: actions/checkout@v4
 
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
+        uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Restore dependencies
-        run: dotnet restore ${{ env.PROJECT_FILE }}
-
-      - name: Build
-        run: |
-          dotnet build ${{ env.PROJECT_FILE }} \
-            --configuration Release \
-            --no-restore
-
-      - name: Publish Function App
-        run: |
-          rm -rf ${{ env.PUBLISH_DIR }}
-
-          dotnet publish ${{ env.PROJECT_FILE }} \
-            --configuration Release \
-            --no-restore \
-            --output ${{ env.PUBLISH_DIR }}
-
-      - name: Verify Function package
+      - name: 'Resolve Project Dependencies Using Dotnet'
         shell: bash
         run: |
-          set -e
-
-          echo "===== PUBLISH DIRECTORY ====="
-          ls -lah ${{ env.PUBLISH_DIR }}
-
-          echo "===== REQUIRED FILES ====="
-
-          for file in \
-            host.json \
-            functions.metadata \
-            worker.config.json \
-            extensions.json
-          do
-            if [ ! -s "${{ env.PUBLISH_DIR }}/$file" ]; then
-              echo "ERROR: $file is missing or empty"
-              exit 1
-            fi
-
-            echo "FOUND: $file"
-          done
-
-          echo "===== FUNCTION METADATA VALIDATION ====="
-
-          jq empty "${{ env.PUBLISH_DIR }}/functions.metadata"
-
-          FUNCTION_COUNT=$(jq 'length' "${{ env.PUBLISH_DIR }}/functions.metadata")
-
-          echo "Functions discovered during publish: $FUNCTION_COUNT"
-
-          if [ "$FUNCTION_COUNT" -eq 0 ]; then
-            echo "ERROR: No Azure Functions were discovered during publish."
-            exit 1
-          fi
-
-          echo "===== FUNCTION NAMES ====="
-          jq -r '.[].name' "${{ env.PUBLISH_DIR }}/functions.metadata"
-
-          echo "===== PACKAGE VALIDATION SUCCESSFUL ====="
-
-      - name: Deploy to Azure Function
+          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
+          dotnet build --configuration Release --output ./output
+          popd
+      
+      - name: 'Run Azure Functions Action'
         uses: Azure/functions-action@v1
+        id: fa
         with:
-          app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-          publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-          package: ${{ env.PUBLISH_DIR }}
+          app-name: 'aepw-listner'
+          slot-name: 'Production'
+          package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
+          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_10DC2D61C0B04968AD17CE4CD6A1DD6E }}
