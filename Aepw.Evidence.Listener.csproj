@@ -10,7 +10,7 @@
   <ItemGroup>
 
     <!-- Azure Functions isolated worker -->
-    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.50.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.52.0" />
 
     <!-- HTTP -->
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.2.0" />
