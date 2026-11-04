@@ -1,3 +1,4 @@
+using Aepw.Evidence.Listener;
 using Aepw.Evidence.Listener.Storage;
 using Azure.Data.Tables;
 using Azure.Identity;
@@ -9,6 +10,8 @@ using Microsoft.Graph;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
+    .ConfigureGeneratedFunctionMetadataProvider()
+    .ConfigureGeneratedFunctionExecutor()
     .ConfigureServices(services =>
     {
         // Application Insights
