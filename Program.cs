@@ -8,7 +8,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Graph;
 
 var host = new HostBuilder()
-    .ConfigureFunctionsWebApplication()
+    .ConfigureFunctionsWorkerDefaults()
     .ConfigureServices(services =>
     {
         // Application Insights

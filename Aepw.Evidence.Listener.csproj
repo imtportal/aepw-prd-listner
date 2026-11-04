@@ -10,18 +10,18 @@
 
   <ItemGroup>
     <!-- Functions isolated worker -->
-    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.0.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.52.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.1.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.3.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
     <!-- Application Insights -->
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.0.0" />
-    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="2.51.0" />
+    <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="3.2.0" />
     <!-- Managed Identity + SDKs used directly (no server bindings) -->
-    <PackageReference Include="Azure.Identity" Version="1.13.1" />
-    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.18.2" />
-    <PackageReference Include="Azure.Data.Tables" Version="12.9.1" />
-    <PackageReference Include="Microsoft.Graph" Version="5.61.0" />
+    <PackageReference Include="Azure.Identity" Version="1.21.0" />
+    <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.21.0" />
+    <PackageReference Include="Azure.Data.Tables" Version="12.13.0" />
+    <PackageReference Include="Microsoft.Graph" Version="6.9.0" />
   </ItemGroup>
 
   <ItemGroup>
