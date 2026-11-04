@@ -10,13 +10,14 @@ on:
 env:
   AZURE_FUNCTIONAPP_NAME: 'aepw-listner'
   DOTNET_VERSION: '10.0.x'
+  PROJECT_FILE: 'Aepw.Evidence.Listener.csproj'
+  PUBLISH_DIR: './publish'
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -26,51 +27,68 @@ jobs:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
       - name: Restore dependencies
-        run: |
-          dotnet restore Aepw.Evidence.Listener.csproj
+        run: dotnet restore ${{ env.PROJECT_FILE }}
 
       - name: Build
         run: |
-          dotnet build Aepw.Evidence.Listener.csproj \
+          dotnet build ${{ env.PROJECT_FILE }} \
             --configuration Release \
             --no-restore
 
       - name: Publish Function App
         run: |
-          dotnet publish Aepw.Evidence.Listener.csproj \
+          rm -rf ${{ env.PUBLISH_DIR }}
+
+          dotnet publish ${{ env.PROJECT_FILE }} \
             --configuration Release \
-            --output ./publish
+            --no-restore \
+            --output ${{ env.PUBLISH_DIR }}
 
       - name: Verify Function package
+        shell: bash
         run: |
-          echo "===== PUBLISH CONTENT ====="
-          find ./publish -maxdepth 2 -type f | sort
+          set -e
 
-          echo "===== FUNCTIONS METADATA ====="
-          if [ -f ./publish/functions.metadata ]; then
-            cat ./publish/functions.metadata
-          else
-            echo "WARNING: functions.metadata is missing"
-          fi
+          echo "===== PUBLISH DIRECTORY ====="
+          ls -lah ${{ env.PUBLISH_DIR }}
 
-          echo "===== WORKER CONFIG ====="
-          if [ -f ./publish/worker.config.json ]; then
-            cat ./publish/worker.config.json
-          else
-            echo "WARNING: worker.config.json is missing"
-          fi
+          echo "===== REQUIRED FILES ====="
 
-          echo "===== HOST JSON ====="
-          if [ -f ./publish/host.json ]; then
-            cat ./publish/host.json
-          else
-            echo "ERROR: host.json is missing"
+          for file in \
+            host.json \
+            functions.metadata \
+            worker.config.json \
+            extensions.json
+          do
+            if [ ! -s "${{ env.PUBLISH_DIR }}/$file" ]; then
+              echo "ERROR: $file is missing or empty"
+              exit 1
+            fi
+
+            echo "FOUND: $file"
+          done
+
+          echo "===== FUNCTION METADATA VALIDATION ====="
+
+          jq empty "${{ env.PUBLISH_DIR }}/functions.metadata"
+
+          FUNCTION_COUNT=$(jq 'length' "${{ env.PUBLISH_DIR }}/functions.metadata")
+
+          echo "Functions discovered during publish: $FUNCTION_COUNT"
+
+          if [ "$FUNCTION_COUNT" -eq 0 ]; then
+            echo "ERROR: No Azure Functions were discovered during publish."
             exit 1
           fi
+
+          echo "===== FUNCTION NAMES ====="
+          jq -r '.[].name' "${{ env.PUBLISH_DIR }}/functions.metadata"
+
+          echo "===== PACKAGE VALIDATION SUCCESSFUL ====="
 
       - name: Deploy to Azure Function
         uses: Azure/functions-action@v1
         with:
           app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_FUNCTIONAPP_PUBLISH_PROFILE }}
-          package: ./publish
+          package: ${{ env.PUBLISH_DIR }}
