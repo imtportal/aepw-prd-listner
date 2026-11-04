@@ -54,9 +54,11 @@ jobs:
 
           echo "===== REQUIRED FILES ====="
 
+          # Note: functions.metadata is NOT required with Azure.Functions.Sdk/1.0.0.
+          # That SDK uses worker-side indexing (workerIndexing=true in worker.config.json);
+          # the host fetches function metadata from the worker at runtime via gRPC.
           for file in \
             host.json \
-            functions.metadata \
             worker.config.json \
             extensions.json
           do
@@ -68,21 +70,21 @@ jobs:
             echo "FOUND: $file"
           done
 
-          echo "===== FUNCTION METADATA VALIDATION ====="
-
-          jq empty "${{ env.PUBLISH_DIR }}/functions.metadata"
-
-          FUNCTION_COUNT=$(jq 'length' "${{ env.PUBLISH_DIR }}/functions.metadata")
-
-          echo "Functions discovered during publish: $FUNCTION_COUNT"
-
-          if [ "$FUNCTION_COUNT" -eq 0 ]; then
-            echo "ERROR: No Azure Functions were discovered during publish."
+          echo "===== WORKER CONFIG VALIDATION ====="
+          jq empty "${{ env.PUBLISH_DIR }}/worker.config.json"
+          WORKER_INDEXING=$(jq -r '.description.workerIndexing' "${{ env.PUBLISH_DIR }}/worker.config.json")
+          echo "workerIndexing: $WORKER_INDEXING"
+          if [ "$WORKER_INDEXING" != "true" ]; then
+            echo "ERROR: worker.config.json does not have workerIndexing=true"
             exit 1
           fi
 
-          echo "===== FUNCTION NAMES ====="
-          jq -r '.[].name' "${{ env.PUBLISH_DIR }}/functions.metadata"
+          echo "===== METADATA LOADER VALIDATION ====="
+          if [ ! -f "${{ env.PUBLISH_DIR }}/.azurefunctions/Microsoft.Azure.WebJobs.Extensions.FunctionMetadataLoader.dll" ]; then
+            echo "ERROR: FunctionMetadataLoader.dll missing from .azurefunctions/"
+            exit 1
+          fi
+          echo "FOUND: .azurefunctions/Microsoft.Azure.WebJobs.Extensions.FunctionMetadataLoader.dll"
 
           echo "===== PACKAGE VALIDATION SUCCESSFUL ====="
 
