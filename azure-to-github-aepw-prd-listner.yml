@@ -63,6 +63,7 @@ steps:
     rsync -av --delete \
       --exclude='.git/' \
       --exclude='.github/' \
+      --exclude='Aepw.Evidence.Listener.csproj' \
       "$TEMP_DIR/" \
       "$GITHUB_REPO/"
 

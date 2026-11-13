@@ -1,4 +1,3 @@
-using Aepw.Evidence.Listener;
 using Aepw.Evidence.Listener.Storage;
 using Azure.Data.Tables;
 using Azure.Identity;
@@ -10,8 +9,6 @@ using Microsoft.Graph;
 
 var host = new HostBuilder()
     .ConfigureFunctionsWorkerDefaults()
-    .ConfigureGeneratedFunctionMetadataProvider()
-    .ConfigureGeneratedFunctionExecutor()
     .ConfigureServices(services =>
     {
         // Application Insights
@@ -24,22 +21,27 @@ var host = new HostBuilder()
         // SharePoint / Graph tenant.
         // =========================================================
 
+        var graphTenantId = GetRequired("GraphTenantId");
+        var graphClientId = GetRequired("GraphClientId");
+        var graphClientSecret = GetRequired("GraphClientSecret");
+
+        var graphCredential = new ClientSecretCredential(
+            graphTenantId,
+            graphClientId,
+            graphClientSecret);
+
         services.AddSingleton(_ =>
             new GraphServiceClient(
-                new ClientSecretCredential(
-                    GetRequired("GraphTenantId"),
-                    GetRequired("GraphClientId"),
-                    GetRequired("GraphClientSecret")),
+                graphCredential,
                 new[] { "https://graph.microsoft.com/.default" }));
 
 
         // =========================================================
         // Azure Managed Identity
         // Used for Service Bus and Table Storage.
-        // Registered as a singleton so both clients share one instance.
         // =========================================================
 
-        services.AddSingleton<DefaultAzureCredential>();
+        var managedIdentityCredential = new DefaultAzureCredential();
 
 
         // =========================================================
@@ -47,14 +49,26 @@ var host = new HostBuilder()
         // Listener only SENDS reference messages.
         // =========================================================
 
-        services.AddSingleton(sp =>
-            new ServiceBusClient(
-                GetRequired("ServiceBusFullyQualifiedNamespace"),
-                sp.GetRequiredService<DefaultAzureCredential>()));
+        services.AddSingleton(_ =>
+        {
+            var namespaceName =
+                GetRequired("ServiceBusFullyQualifiedNamespace");
+
+            return new ServiceBusClient(
+                namespaceName,
+                managedIdentityCredential);
+        });
 
         services.AddSingleton(sp =>
-            sp.GetRequiredService<ServiceBusClient>()
-              .CreateSender(GetRequired("ServiceBusQueueName")));
+        {
+            var client =
+                sp.GetRequiredService<ServiceBusClient>();
+
+            var queue =
+                GetRequired("ServiceBusQueueName");
+
+            return client.CreateSender(queue);
+        });
 
 
         // =========================================================
@@ -62,10 +76,15 @@ var host = new HostBuilder()
         // Used to store the Microsoft Graph Delta Link.
         // =========================================================
 
-        services.AddSingleton(sp =>
-            new TableServiceClient(
-                new Uri(GetRequired("StorageAccountTableEndpoint")),
-                sp.GetRequiredService<DefaultAzureCredential>()));
+        services.AddSingleton(_ =>
+        {
+            var endpoint =
+                new Uri(GetRequired("StorageAccountTableEndpoint"));
+
+            return new TableServiceClient(
+                endpoint,
+                managedIdentityCredential);
+        });
 
         services.AddSingleton<IDeltaStore, TableDeltaStore>();
     })

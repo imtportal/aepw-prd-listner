@@ -198,6 +198,23 @@ public sealed class SharePointWebhookListener
                     continue;
                 }
 
+                // Gate on cTag: SharePoint bumps ETag on any change (content OR metadata settle),
+                // but cTag changes only when file content changes. Skip enqueue when cTag is
+                // unchanged so metadata-only settle events don't trigger reprocessing.
+                // If cTag is null (not returned by Graph), fall through — never drop a real change.
+                var cTag = item.CTag;
+                if (!isDelete && cTag is not null)
+                {
+                    var storedCTag = await _deltaStore.GetCTagAsync(driveId, item.Id!);
+                    if (storedCTag == cTag)
+                    {
+                        _log.LogInformation(
+                            "SKIP ENQUEUE | ItemId={ItemId} | Reason=cTag unchanged | cTag={CTag}",
+                            item.Id, cTag);
+                        continue;
+                    }
+                }
+
                 var msg = new ProcessingRequest
                 {
                     EventType = isDelete ? "deleted" : "created_or_updated",
@@ -240,6 +257,12 @@ public sealed class SharePointWebhookListener
                     msg.ItemId,
                     sb.MessageId,
                     enqueued);
+
+                // Update cTag state only after a confirmed send so a failed send is retried next time.
+                if (isDelete)
+                    await _deltaStore.RemoveCTagAsync(driveId, item.Id!);
+                else if (cTag is not null)
+                    await _deltaStore.SaveCTagAsync(driveId, item.Id!, cTag);
             }
 
             // The deltaLink appears only on the final page; follow nextLink paging until then.
